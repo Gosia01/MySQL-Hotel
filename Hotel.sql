@@ -65,6 +65,19 @@ id_rplatnosci int,
 primary key(id_rezerwacje)
 );
 drop table rezerwacje;
+create table logowanie_goscia(
+login_goscia varchar(25),
+haslo_goscia varchar(25),
+id_goscia int
+);
+drop table logowanie_goscia;
+create table logowanie_admin(
+id_admin int auto_increment,
+login_admin varchar(25),
+haslo_admin varchar(25),
+primary key(id_admin)
+);
+drop table logowanie_admin;
 
 create table goscie_rezerwacje(
 id_goscia int,
@@ -184,72 +197,88 @@ insert into rezerwacje values (6, '2018-01-22', '2018-01-26', 3, 10, 1);
 insert into rezerwacje values (7, '2018-01-17', '2018-01-23', 6, 6, 1);
 insert into rezerwacje values (8, '2018-01-18', '2018-01-25', 7, 4, 1);
 select*from rezerwacje;
+insert into logowanie_goscia values ('Dagmara1', 'kotek1', 1);
+insert into logowanie_goscia values ('Hozjusz2', 'żółwik2', 2);
+insert into logowanie_goscia values ('Aleksandra3', 'piesek3', 3);
+insert into logowanie_goscia values ('Adrian4', 'chomik4', 4);
+insert into logowanie_goscia values ('Irena5', 'kangur5', 5);
+insert into logowanie_goscia values ('Lech6','mis6', 6);
+insert into logowanie_goscia values ('Karolina7', 'nietoperz7', 7);
+insert into logowanie_goscia values ('Magdalena8', 'jez8', 8);
+select*from logowanie_goscia;
+insert into logowanie_admin values (1, 'Admin1', 'ace135');
+insert into logowanie_admin values (2, 'Admin2', 'bdf246');
+insert into logowanie_admin values (3, 'Admin3', 'gik791');
+select*from logowanie_admin;
 
 #WIDOKI
 #dostepność danego rodzaju pokoju (pokój 2-osobowy) w podanym terminie (16-21.01.2018)
-SELECT 
-    rp.id_nr_pokoju,
-    rp.ilosc_osob,
-    rp.standard,
-    CASE
-        WHEN
-            ('2018-01-16' BETWEEN data_przyjazdu AND data_wyjazdu)
-                OR ('2018-01-21' BETWEEN data_przyjazdu AND data_wyjazdu)
-        THEN
-            'zajęty'
-        ELSE 'wolny'
-    END AS dostepnosc
-FROM
-    rezerwacje AS r
-        JOIN
-    rodzaj_pokoju AS rp ON (r.id_nr_pokoju = rp.id_nr_pokoju)
-WHERE
-    ilosc_osob = 2
-ORDER BY id_nr_pokoju;
+CREATE VIEW dostepnosc_pokoju AS
+    SELECT 
+        rp.id_nr_pokoju,
+        rp.ilosc_osob,
+        rp.standard,
+        CASE
+            WHEN
+                ('2018-01-16' BETWEEN data_przyjazdu AND data_wyjazdu)
+                    OR ('2018-01-21' BETWEEN data_przyjazdu AND data_wyjazdu)
+            THEN
+                'zajęty'
+            ELSE 'wolny'
+        END AS dostepnosc
+    FROM
+        rezerwacje AS r
+            JOIN
+        rodzaj_pokoju AS rp ON (r.id_nr_pokoju = rp.id_nr_pokoju)
+    WHERE
+        ilosc_osob = 2
+    ORDER BY id_nr_pokoju;
+select*from dostepnosc_pokoju;
 
 #suma kosztów pobytu (pokój + usługi dodatkowe) dla danego gościa (o nazwisku Buholc)
-SELECT 
-    g.*,
-    DATEDIFF(data_wyjazdu, data_przyjazdu) * rp.cena_p + (s.ilosc_s * s.cena_s + o.ilosc_o * o.cena_o + spa.ilosc_SPA * spa.cena_SPA + p.ilosc_parkingu * p.cena_parkingu) AS cena_za_pobyt
-FROM
-    rezerwacje AS r
-        JOIN
-    goscie AS g ON (r.id_goscia = g.id_goscia)
-        JOIN
-    rodzaj_pokoju AS rp ON (r.id_nr_pokoju = rp.id_nr_pokoju)
-        JOIN
-    sniadania AS s ON (g.id_goscia = s.id_goscia)
-        JOIN
-    obiadokolacje AS o ON (s.id_goscia = o.id_goscia)
-        JOIN
-    pakiet_SPA AS spa ON (o.id_goscia = spa.id_goscia)
-        JOIN
-    parking AS p ON (spa.id_goscia = p.id_goscia)
-WHERE
-    nazwisko = 'Buholc';
+CREATE VIEW koszt_pobytu AS
+    SELECT 
+        g.*,
+        DATEDIFF(data_wyjazdu, data_przyjazdu) * rp.cena_p + (s.ilosc_s * s.cena_s + o.ilosc_o * o.cena_o + spa.ilosc_SPA * spa.cena_SPA + p.ilosc_parkingu * p.cena_parkingu) AS cena_za_pobyt
+    FROM
+        rezerwacje AS r
+            JOIN
+        goscie AS g ON (r.id_goscia = g.id_goscia)
+            JOIN
+        rodzaj_pokoju AS rp ON (r.id_nr_pokoju = rp.id_nr_pokoju)
+            JOIN
+        sniadania AS s ON (g.id_goscia = s.id_goscia)
+            JOIN
+        obiadokolacje AS o ON (s.id_goscia = o.id_goscia)
+            JOIN
+        pakiet_SPA AS spa ON (o.id_goscia = spa.id_goscia)
+            JOIN
+        parking AS p ON (spa.id_goscia = p.id_goscia)
+    WHERE
+        nazwisko = 'Buholc';
+select*from koszt_pobytu;
     
 #informacje o konkretnym gościu (imię, nazwisko, nr dowodu osobistego, zarezerwowany pokój, długość pobytu, okres pobytu, rodzaj płatności)
-SELECT 
-    imie,
-    nazwisko,
-    nr_dowodu,
-    standard,
-    ilosc_osob,
-    data_przyjazdu,
-    data_wyjazdu,
-    DATEDIFF(data_wyjazdu, data_przyjazdu) AS dlugosc_pobytu,
-    rplatnosci
-FROM
-    rezerwacje AS r
-        JOIN
-    goscie AS g ON (r.id_goscia = g.id_goscia)
-        JOIN
-    rodzaj_pokoju AS rpok ON (r.id_nr_pokoju = rpok.id_nr_pokoju)
-        JOIN
-    rodzaj_platnosci AS rpl ON (r.id_rplatnosci = rpl.id_rplatnosci)
-WHERE
-    nazwisko = 'Buholc';
+CREATE VIEW informacje_o_gosciu AS
+    SELECT 
+        imie,
+        nazwisko,
+        nr_dowodu,
+        standard,
+        ilosc_osob,
+        data_przyjazdu,
+        data_wyjazdu,
+        DATEDIFF(data_wyjazdu, data_przyjazdu) AS dlugosc_pobytu,
+        rplatnosci
+    FROM
+        rezerwacje AS r
+            JOIN
+        goscie AS g ON (r.id_goscia = g.id_goscia)
+            JOIN
+        rodzaj_pokoju AS rpok ON (r.id_nr_pokoju = rpok.id_nr_pokoju)
+            JOIN
+        rodzaj_platnosci AS rpl ON (r.id_rplatnosci = rpl.id_rplatnosci)
+    WHERE
+        nazwisko = 'Buholc';
+select*from informacje_o_gosciu;
 
-
-
-#TRIGGERY???
